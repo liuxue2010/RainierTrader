@@ -1,0 +1,52 @@
+# RainierTrader Configuration — Example with full comments
+# Copy this to config.yaml and customize.
+
+# Trading mode: "paper" for simulated trading, "live" for real money
+mode: paper
+
+# List of stock symbols to monitor and trade
+watchlist:
+  - AAPL
+  - MSFT
+  - NVDA
+
+# How often to run the trading loop
+schedule:
+  interval_minutes: 5        # Evaluate each symbol every N minutes
+  market_hours_only: true    # Restrict to 9:30–16:00 ET Mon–Fri
+
+strategy:
+  indicators:
+    sma_fast: 20             # Fast SMA period
+    sma_slow: 50             # Slow SMA period
+    sma_trend: 200           # Long-term trend SMA period
+    rsi_period: 14           # RSI lookback period
+    rsi_overbought: 70       # RSI level considered overbought
+    rsi_oversold: 30         # RSI level considered oversold
+    macd_fast: 12            # MACD fast EMA period
+    macd_slow: 26            # MACD slow EMA period
+    macd_signal: 9           # MACD signal line period
+    bb_period: 20            # Bollinger Bands period
+    bb_std: 2                # Bollinger Bands standard deviations
+  min_confidence: 0.6        # Only act if Claude's confidence >= this
+
+risk:
+  max_position_pct: 20       # Max % of total equity in any single stock
+  max_positions: 5           # Max number of open positions at once
+  stop_loss_pct: 3           # Automatically exit if trade loses this %
+  take_profit_pct: 8         # Automatically exit if trade gains this %
+  daily_loss_limit_pct: 5    # Halt trading for the day if total loss hits this %
+  min_cash_reserve_pct: 20   # Always keep at least this % as cash
+
+orders:
+  type: market               # Order type: "market" or "limit"
+  time_in_force: day         # "day" expires at close; "gtc" = good-till-cancelled
+
+llm:
+  model: claude-sonnet-4-6   # Claude model to use for decisions
+  temperature: 0.3           # Lower = more deterministic decisions
+  max_tokens: 1000           # Max tokens in Claude's response
+
+logging:
+  level: INFO                # Log verbosity: DEBUG, INFO, WARNING, ERROR
+  file: logs/rainier.log     # Log file path (relative to project root)

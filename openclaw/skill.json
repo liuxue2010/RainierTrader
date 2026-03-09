@@ -1,0 +1,37 @@
+{
+  "name": "rainier-trader",
+  "version": "1.0.0",
+  "description": "Autonomous AI trading agent for U.S. stocks",
+  "author": "Xue Liu",
+  "commands": [
+    {
+      "name": "portfolio",
+      "description": "Show current portfolio and positions"
+    },
+    {
+      "name": "trades",
+      "description": "Show today's trades and decisions"
+    },
+    {
+      "name": "start",
+      "description": "Start the trading agent"
+    },
+    {
+      "name": "stop",
+      "description": "Stop the trading agent"
+    },
+    {
+      "name": "status",
+      "description": "Show agent status (running/stopped, last action)"
+    },
+    {
+      "name": "performance",
+      "description": "Show performance summary (daily, weekly, monthly)"
+    }
+  ],
+  "permissions": [
+    "network.http",
+    "fs.read_config",
+    "process.background"
+  ]
+}
