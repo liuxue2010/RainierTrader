@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import sys
 from datetime import date
@@ -63,7 +62,7 @@ def run_once(
 
     from rainier_trader.core.orchestrator import Orchestrator
     typer.echo(f"Running single cycle for {symbol}...")
-    asyncio.run(Orchestrator(settings).run_once(symbol))
+    Orchestrator(settings).run_once(symbol)
     typer.echo("Done.")
 
 
@@ -72,20 +71,14 @@ def status(
     config: str = typer.Option("config/config.yaml", help="Path to config file"),
 ) -> None:
     """Show current portfolio and agent status."""
-    async def _run():
-        settings = load_settings(config)
-        from rainier_trader.clients.alpaca_client import AlpacaClient
-        from rainier_trader.utils.formatting import format_portfolio
+    settings = load_settings(config)
+    from rainier_trader.clients.alpaca_client import AlpacaClient
+    from rainier_trader.utils.formatting import format_portfolio
 
-        broker = AlpacaClient(settings.alpaca_api_key, settings.alpaca_secret_key, paper=settings.is_paper)
-        account = await broker.get_account()
-        positions = await broker.get_positions()
-        typer.echo(format_portfolio(
-            account.__dict__,
-            [p.__dict__ for p in positions],
-        ))
-
-    asyncio.run(_run())
+    broker = AlpacaClient(settings.alpaca_api_key, settings.alpaca_secret_key, paper=settings.is_paper)
+    account = broker.get_account()
+    positions = broker.get_positions()
+    typer.echo(format_portfolio(account.__dict__, [p.__dict__ for p in positions]))
 
 
 @app.command()

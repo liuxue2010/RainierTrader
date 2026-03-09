@@ -5,7 +5,7 @@ from rainier_trader.core.state import TradingState
 logger = logging.getLogger(__name__)
 
 
-async def execute_order(state: TradingState) -> dict:
+def execute_order(state: TradingState) -> dict:
     from rainier_trader.clients.alpaca_client import AlpacaClient
     from rainier_trader.config.settings import load_settings
 
@@ -16,11 +16,10 @@ async def execute_order(state: TradingState) -> dict:
     action = state["action"]
 
     try:
-        account = await broker.get_account()
-        positions = await broker.get_positions()
+        account = broker.get_account()
+        positions = broker.get_positions()
 
         if action == "buy":
-            # Size position: up to max_position_pct of equity, but respect cash reserve
             max_spend = account.equity * (risk.max_position_pct / 100)
             available = account.cash - (account.equity * (risk.min_cash_reserve_pct / 100))
             spend = min(max_spend, available)
@@ -35,7 +34,7 @@ async def execute_order(state: TradingState) -> dict:
                 return {"order_result": None, "execution_status": "skipped"}
             qty = pos.qty
 
-        order = await broker.submit_order(symbol, qty, action, settings.orders.type)
+        order = broker.submit_order(symbol, qty, action, settings.orders.type)
         logger.info(f"{symbol}: order submitted id={order.id} qty={qty} side={action}")
         return {
             "order_result": {

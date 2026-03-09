@@ -5,7 +5,7 @@ from rainier_trader.core.state import TradingState
 logger = logging.getLogger(__name__)
 
 
-async def llm_decision(state: TradingState) -> dict:
+def llm_decision(state: TradingState) -> dict:
     from rainier_trader.clients.llm_client import ClaudeClient
     from rainier_trader.clients.alpaca_client import AlpacaClient
     from rainier_trader.config.settings import load_settings
@@ -21,11 +21,11 @@ async def llm_decision(state: TradingState) -> dict:
     )
 
     try:
-        account = await broker.get_account()
-        positions = await broker.get_positions()
+        account = broker.get_account()
+        positions = broker.get_positions()
         portfolio = Portfolio(account=account, positions=positions)
 
-        decision = await llm.analyze_and_decide(
+        decision = llm.analyze_and_decide(
             symbol=state["symbol"],
             indicators=state["indicators"],
             portfolio=portfolio,

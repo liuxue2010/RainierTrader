@@ -48,7 +48,7 @@ Respond with JSON only.
 
 class LLMClient(ABC):
     @abstractmethod
-    async def analyze_and_decide(
+    def analyze_and_decide(
         self,
         symbol: str,
         indicators: dict,
@@ -66,7 +66,7 @@ class ClaudeClient(LLMClient):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    async def analyze_and_decide(
+    def analyze_and_decide(
         self,
         symbol: str,
         indicators: dict,

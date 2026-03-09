@@ -1,7 +1,7 @@
 import logging
 
 import pandas as pd
-import pandas_ta as ta
+import ta
 
 from rainier_trader.core.state import TradingState
 
@@ -16,37 +16,34 @@ def analyze_indicators(state: TradingState) -> dict:
         logger.warning(f"{symbol}: insufficient data for indicators ({len(df)} bars)")
         return {"indicators": {}, "technical_signal": "neutral"}
 
-    # Calculate indicators
-    df.ta.sma(length=20, append=True)
-    df.ta.sma(length=50, append=True)
-    df.ta.sma(length=200, append=True)
-    df.ta.rsi(length=14, append=True)
-    df.ta.macd(fast=12, slow=26, signal=9, append=True)
-    df.ta.bbands(length=20, std=2, append=True)
-
-    last = df.iloc[-1]
-
-    def get(col: str) -> float | None:
-        val = last.get(col)
-        return float(val) if val is not None and not pd.isna(val) else None
+    close = df["close"]
 
     indicators = {
         "current_price": state["current_price"],
-        "sma_20": get("SMA_20"),
-        "sma_50": get("SMA_50"),
-        "sma_200": get("SMA_200"),
-        "rsi": get("RSI_14"),
-        "macd": get("MACD_12_26_9"),
-        "macd_signal": get("MACDs_12_26_9"),
-        "macd_hist": get("MACDh_12_26_9"),
-        "bb_upper": get("BBU_20_2.0"),
-        "bb_mid": get("BBM_20_2.0"),
-        "bb_lower": get("BBL_20_2.0"),
+        "sma_20": _last(ta.trend.SMAIndicator(close, window=20).sma_indicator()),
+        "sma_50": _last(ta.trend.SMAIndicator(close, window=50).sma_indicator()),
+        "sma_200": _last(ta.trend.SMAIndicator(close, window=200).sma_indicator()),
+        "rsi": _last(ta.momentum.RSIIndicator(close, window=14).rsi()),
     }
+
+    macd = ta.trend.MACD(close, window_slow=26, window_fast=12, window_sign=9)
+    indicators["macd"] = _last(macd.macd())
+    indicators["macd_signal"] = _last(macd.macd_signal())
+    indicators["macd_hist"] = _last(macd.macd_diff())
+
+    bb = ta.volatility.BollingerBands(close, window=20, window_dev=2)
+    indicators["bb_upper"] = _last(bb.bollinger_hband())
+    indicators["bb_mid"] = _last(bb.bollinger_mavg())
+    indicators["bb_lower"] = _last(bb.bollinger_lband())
 
     signal = _determine_signal(indicators)
     logger.info(f"{symbol}: signal={signal}, RSI={indicators['rsi']}")
     return {"indicators": indicators, "technical_signal": signal}
+
+
+def _last(series: pd.Series) -> float | None:
+    val = series.iloc[-1] if len(series) > 0 else None
+    return float(val) if val is not None and not pd.isna(val) else None
 
 
 def _determine_signal(ind: dict) -> str:

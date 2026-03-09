@@ -7,23 +7,23 @@ from rainier_trader.models.trade import Account, Order, Position
 
 class BrokerClient(ABC):
     @abstractmethod
-    async def get_bars(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
+    def get_bars(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
         """Fetch OHLCV bars."""
 
     @abstractmethod
-    async def get_account(self) -> Account:
+    def get_account(self) -> Account:
         """Get account info."""
 
     @abstractmethod
-    async def get_positions(self) -> list[Position]:
+    def get_positions(self) -> list[Position]:
         """Get current positions."""
 
     @abstractmethod
-    async def submit_order(self, symbol: str, qty: float, side: str, order_type: str) -> Order:
+    def submit_order(self, symbol: str, qty: float, side: str, order_type: str) -> Order:
         """Submit a trade order."""
 
     @abstractmethod
-    async def get_order(self, order_id: str) -> Order:
+    def get_order(self, order_id: str) -> Order:
         """Get order status."""
 
 
@@ -35,25 +35,47 @@ class AlpacaClient(BrokerClient):
         self.trading = TradingClient(api_key, secret_key, paper=paper)
         self.data = StockHistoricalDataClient(api_key, secret_key)
 
-    async def get_bars(self, symbol: str, timeframe: str = "5Min", limit: int = 200) -> pd.DataFrame:
+    def get_bars(self, symbol: str, timeframe: str = "5Min", limit: int = 200) -> pd.DataFrame:
+        from datetime import datetime, timedelta, timezone
         from alpaca.data.requests import StockBarsRequest
         from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 
         tf_map = {
-            "1Min": TimeFrame(1, TimeFrameUnit.Minute),
-            "5Min": TimeFrame(5, TimeFrameUnit.Minute),
-            "1D": TimeFrame(1, TimeFrameUnit.Day),
+            "1Min": (TimeFrame(1, TimeFrameUnit.Minute), timedelta(days=5)),
+            "5Min": (TimeFrame(5, TimeFrameUnit.Minute), timedelta(days=10)),
+            "1D": (TimeFrame(1, TimeFrameUnit.Day), timedelta(days=365)),
         }
-        request = StockBarsRequest(symbol_or_symbols=symbol, timeframe=tf_map[timeframe], limit=limit)
+        tf, lookback = tf_map[timeframe]
+        now = datetime.now(timezone.utc)
+        request = StockBarsRequest(
+            symbol_or_symbols=symbol,
+            timeframe=tf,
+            start=now - lookback,
+            end=now,
+            limit=limit,
+            feed="iex",
+        )
         bars = self.data.get_stock_bars(request)
-        return bars.df
+        df = bars.df
 
-    async def get_account(self) -> Account:
+        if df.empty:
+            return df
+
+        # Alpaca returns MultiIndex (symbol, timestamp) — flatten to just timestamp
+        if isinstance(df.index, pd.MultiIndex):
+            df = df.droplevel(0)
+
+        df.index = pd.to_datetime(df.index)
+        return df
+
+    def get_account(self) -> Account:
         acct = self.trading.get_account()
-        daily_pl = float(acct.equity) - float(acct.last_equity)
-        daily_pl_pct = (daily_pl / float(acct.last_equity) * 100) if float(acct.last_equity) else 0.0
+        equity = float(acct.equity)
+        last_equity = float(acct.last_equity)
+        daily_pl = equity - last_equity
+        daily_pl_pct = (daily_pl / last_equity * 100) if last_equity else 0.0
         return Account(
-            equity=float(acct.equity),
+            equity=equity,
             cash=float(acct.cash),
             buying_power=float(acct.buying_power),
             portfolio_value=float(acct.portfolio_value),
@@ -61,7 +83,7 @@ class AlpacaClient(BrokerClient):
             daily_pl_pct=daily_pl_pct,
         )
 
-    async def get_positions(self) -> list[Position]:
+    def get_positions(self) -> list[Position]:
         positions = self.trading.get_all_positions()
         return [
             Position(
@@ -75,8 +97,8 @@ class AlpacaClient(BrokerClient):
             for p in positions
         ]
 
-    async def submit_order(self, symbol: str, qty: float, side: str, order_type: str = "market") -> Order:
-        from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
+    def submit_order(self, symbol: str, qty: float, side: str, order_type: str = "market") -> Order:
+        from alpaca.trading.requests import MarketOrderRequest
         from alpaca.trading.enums import OrderSide, TimeInForce
 
         order_side = OrderSide.BUY if side == "buy" else OrderSide.SELL
@@ -97,7 +119,7 @@ class AlpacaClient(BrokerClient):
             submitted_at=result.submitted_at,
         )
 
-    async def get_order(self, order_id: str) -> Order:
+    def get_order(self, order_id: str) -> Order:
         result = self.trading.get_order_by_id(order_id)
         return Order(
             id=str(result.id),
